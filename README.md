@@ -1,4 +1,4 @@
-# WorldCupAnalysis
+# World_Cup_Analysis
 Summaries, analysis, and predictions for 2022 World Cup.
 
 Repository includes 3 files --
