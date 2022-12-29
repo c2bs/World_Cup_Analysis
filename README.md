@@ -6,7 +6,7 @@ Repository includes 3 files --
 World_Cup_Presentation: .pdf file is a presentation that brings together summary figures and regression model. Was presented in my MGSC310: Statistical Models for Business Analytics (Introduction to Machine Learning) class, taken in Argyros School of Business and Economics at Chapman University.
 
 World_Cup_Summary: 
-TO VIEW KNITTED HTML FILE (INCLUDES GRAPHS AND OUTPUTS): https://htmlpreview.github.io/https://github.com/c2bs/WorldCupAnalysis/blob/main/World_Cup_Summary.html
+TO VIEW KNITTED HTML FILE (INCLUDES GRAPHS AND OUTPUTS): https://htmlpreview.github.io/?https://github.com/c2bs/WorldCupAnalysis/blob/main/World_Cup_Summary.html
 
 RMarkdown file that includes summary statistics from a dataset that included interesting data that I wanted to show which was not included in my dataset. 
 
