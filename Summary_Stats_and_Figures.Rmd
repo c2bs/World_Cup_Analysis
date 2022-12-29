@@ -1,0 +1,240 @@
+---
+title: "Summary Statistics and Figures"
+author: "Chase Webber"
+subtitle: Summary Statistics and Figures
+output:
+  html_document:
+    df_print: paged
+  html_notebook: default
+---
+
+```{r setup, include=FALSE}
+
+# Please leave this code chunk as is. It makes some slight formatting changes to alter the output to be more aesthetically pleasing. 
+
+library(knitr)
+
+# Change the number in set seed to your own favorite number
+set.seed(1818)
+options(width=70)
+options(scipen=99)
+
+
+# this sets text outputted in code chunks to small
+opts_chunk$set(tidy.opts=list(width.wrap=50),tidy=TRUE, size = "vsmall")  
+opts_chunk$set(message = FALSE,                                          
+               warning = FALSE,
+               # "caching" stores objects in code chunks and only rewrites if you change things
+               cache = FALSE,                               
+               # automatically downloads dependency files
+               autodep = TRUE,
+               # 
+               cache.comments = FALSE,
+               # 
+               collapse = TRUE,
+               # change fig.width and fig.height to change the code height and width by default
+               fig.width = 5.5,  
+               fig.height = 4.5,
+               fig.align='center')
+
+
+```
+
+```{r setup-2}
+
+# Always print this out before your assignment
+sessionInfo()
+getwd()
+
+```
+
+
+<!-- ### start answering your problem set here -->
+<!-- You may export your homework in either html or pdf, with the former usually being easier. 
+     To export or compile your Rmd file: click above on 'Knit' then 'Knit to HTML' -->
+<!-- Be sure to submit both your .Rmd file and the compiled .html or .pdf file for full credit -->
+
+
+```{r setup-3}
+
+# load all your libraries in this chunk 
+
+library("tidyverse")
+library("partykit")
+
+
+library("PerformanceAnalytics")
+library("rpart")
+library("rpart.plot")
+
+
+library("randomForest")
+
+library("rsample")
+library("randomForestExplainer")
+
+library("DALEX")
+library("pdp")
+
+library("visNetwork")
+library("sparkline")
+
+library("ggplot2")
+library("ggridges")
+# note, do not run install.packages() inside a code chunk. install them in the console outside of a code chunk. 
+
+```
+
+
+
+## Cleaned and Transformed dataset
+
+```{r}
+
+matches <- read.csv("archive3/WorldCupMatches.csv")
+players <- read.csv("archive3/WorldCupPlayers.csv")
+world_cups <- read.csv("archive3/WorldCups.csv")
+shoot_outs <- read.csv("archive2/shootouts.csv")
+
+matches_clean <- matches %>% 
+  mutate(total_goals = (matches$Home.Team.Goals + matches$Away.Team.Goals))
+
+matches_clean <- matches_clean %>% 
+  mutate(team_win = (ifelse(Home.Team.Goals>Away.Team.Goals, 'Home', ifelse(Home.Team.Goals<Away.Team.Goals, 'Away', 'Draw')))) %>% drop_na()
+
+home_df <- data.frame(Country = matches$Home.Team.Name, Goals = matches$Home.Team.Goals, Year = matches$Year)
+away_df <- data.frame(Country = matches$Away.Team.Name, Goals = matches$Away.Team.Goals, Year = matches$Year)
+
+home <- na.omit(home_df)
+away <- na.omit(away_df)
+
+country_goals <- rbind(home, away)
+
+shoot_outs <- 
+  shoot_outs %>% 
+  mutate(winner = 
+           as_factor(winner))
+
+players_split <- initial_split(players, prop = 0.75) 
+cups_split <- initial_split(world_cups, prop = 0.75) 
+fifa_split <- initial_split(matches_clean, prop = 0.75) 
+
+players_train <- training(players_split)
+players_test <- testing(players_split)
+
+cups_train <- training(cups_split)
+cups_test <- testing(cups_split)
+
+fifa_train <- training(fifa_split)
+fifa_test <- testing(fifa_split)
+
+```
+
+
+## Summary Statistics
+
+```{r}
+
+country_goals %>% arrange(desc(Goals)) %>% select(Country,Goals,Year) %>% head(n=10)
+
+table(world_cups$Winner)
+
+mean(country_goals$Goals)
+
+max(world_cups$GoalsScored)
+
+min(world_cups$GoalsScored)
+
+```
+Summary Statistics include:
+- Top 10 most amount of goals scored by a country in a World Cup match
+- Table of winners of the World Cup and how many times they have won
+- Average amount of goals scored per team in a World Cup match: 1.42 goals
+- Most amount of goals scored in a World Cup: 171
+- Least amount of goals scored in a World Cup: 70
+
+## Total Amount of Goals Scored in World Cup
+
+```{r}
+
+ggplot(data = world_cups, aes(x = Year, y = GoalsScored)) + geom_col() + labs(y = "Goals Scored", caption = "*World Cup was not held in 1942 and 1946", title = "Total Goals Scored per year")
+
+
+```
+
+Chart showing how total goals scored have increased over time. 
+
+view(matches_clean)
+
+## Top 50 Countries in Total Goals Scored in World Cup
+
+```{r fig.height=10}
+
+goals_country <- country_goals %>% select(-Year)
+goals_country <- country_goals %>% mutate(Country = as.factor(Country))
+
+
+goals_hist <- goals_country %>% ggplot() + aes(x = Goals, y = fct_lump_n(fct_rev(fct_infreq(Country)), n = 20), label=Goals) + geom_col() + labs(x = "Total Goals Scored in World Cup", y = "Country", title = "Top 20 Countries in World Cup Goals Scored", caption = "*disregard other")+theme(axis.text=element_text(size=30),
+        axis.title=element_text(size=30,face="bold"))
+goals_hist 
+
+
+ggplot(goals_country, aes(fct_lump_n(fct_rev(fct_infreq(Country)), n = 20))) + geom_histogram(stat = 'count', binwidth = 50) + coord_flip() + labs(x = "Country", y = "Total Games Played in World Cup", title = "Top 20 Countries in World Cup Games Played", caption = "*disregard other")+theme(axis.text=element_text(size=30),
+        axis.title=element_text(size=30,face="bold"))
+
+
+
+
+
+
+```
+
+Chart showing the amount of goals scored all-time per country in the world cup. 
+
+## Home Field Advantage
+
+```{r}
+
+matches_clean <- matches_clean %>% mutate(team_win = as.factor(team_win))
+country_goals <- country_goals %>% mutate(country_simple = fct_lump(Country, n = 10))
+matches_clean <- matches_clean %>% mutate(home_simple = fct_lump(Home.Team.Name, n = 10))
+matches_clean <- matches_clean %>% mutate(away_simple = fct_lump(Away.Team.Name, n = 10))
+
+
+home_chart <- ggplot(data = matches_clean, aes(x="", y = team_win, fill = team_win))+
+  geom_bar(width=1, stat = "identity")
+
+home_pie <- home_chart + coord_polar("y", start = 0) + labs(title = "Match Outcome per Home or Away", y = "Outcome", x = "Team")
+home_pie
+
+```
+
+Pie chart showing win share between home and away teams.
+
+## Top 50 Countries in Total Shootout Wins in World Cup
+
+```{r}
+
+shoot_outs <- shoot_outs %>% mutate(winner_topten = fct_lump_n(winner, n = 10))
+
+shoot_outs <- shoot_outs %>% mutate(winner_topten = fct_infreq(winner_topten))
+
+winner_subset <- shoot_outs[shoot_outs$winner_topten %in% c('South Korea', 
+                                                          'Zambia',
+                                                          'Egypt',
+                                                          'Argentina',
+                                                          'South Africa',
+                                                          'Thailand',
+                                                          'Kenya ',
+                                                          'Brazil',
+                                                          'Iraq',
+                                                          'Senegal'),]
+ggplot(winner_subset, aes(x = fct_rev(winner_topten))) + 
+  geom_histogram(stat = "count") +
+  coord_flip() + labs(title = "Top 10 Shootout Winners", x = "Country", y = "Shootout wins")
+
+```
+
+Chart showing top 10 countries with the most shootout wins in World Cup history
+
+
