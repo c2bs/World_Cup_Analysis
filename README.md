@@ -1,5 +1,5 @@
 # World_Cup_Analysis
-Summaries, analysis, and predictions for 2022 World Cup.
+Summaries, analysis, and predictions for 2022 World Cup using this dataset: https://www.kaggle.com/datasets/brenda89/fifa-world-cup-2022.
 
 Repository includes 3 files --
 
